@@ -1,182 +1,182 @@
 // SPDX-License-Identifier: MIT
 
-// pragma solidity ^0.8.28;
+pragma solidity ^0.8.28;
 
-// import {IERC20} from "./interfaces/IERC20.sol";
-// import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-// import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
-// import "hardhat/console.sol";
+import {IERC20} from "./interfaces/IERC20.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+import "hardhat/console.sol";
 
-// /// @title UniswapV3Liquidity
-// /// @notice This contract provides functions to mint, increase, decrease, and collect liquidity positions on Uniswap V3 using DAI and WETH.
-// /// @dev Interacts with Uniswap V3's INonfungiblePositionManager for managing NFT-based liquidity positions.
-// /// @author 0xose
-// contract UniswapV3Liquidity is IERC721Receiver {
-//     address private constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-//     address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+/// @title UniswapV3Liquidity
+/// @notice This contract provides functions to mint, increase, decrease, and collect liquidity positions on Uniswap V3 using DAI and WETH.
+/// @dev Interacts with Uniswap V3's INonfungiblePositionManager for managing NFT-based liquidity positions.
+/// @author 0xose
+contract UniswapV3Liquidity is IERC721Receiver {
+    address private constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
 
-//     IERC20 private constant dai = IERC20(DAI);
-//     IERC20 private constant weth = IERC20(WETH);
+    IERC20 private constant dai = IERC20(DAI);
+    IERC20 private constant weth = IERC20(WETH);
 
-//     int24 private constant MIN_TICK = -887272;
-//     int24 private constant MAX_TICK = -MIN_TICK;
-//     int24 private constant TICK_SPACING = 60;
+    int24 private constant MIN_TICK = -887272;
+    int24 private constant MAX_TICK = -MIN_TICK;
+    int24 private constant TICK_SPACING = 60;
 
-//     uint256 public tokenId;
+    uint256 public tokenId;
 
-//     INonfungiblePositionManager public manager =
-//         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
+    INonfungiblePositionManager public manager =
+        INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
 
-//     /// @notice Emitted when a new Uniswap V3 position NFT is minted
-//     /// @param _tokenId The ID of the minted position NFT
-//     event Mint(uint _tokenId);
+    /// @notice Emitted when a new Uniswap V3 position NFT is minted
+    /// @param _tokenId The ID of the minted position NFT
+    event Mint(uint _tokenId);
 
-//     /// @notice Handles the receipt of an ERC721 token (Uniswap V3 position NFT)
-//     /// @dev Required for contracts to receive ERC721 tokens
-//     /// @param operator The address which called `safeTransferFrom` function
-//     /// @param from The address which previously owned the token
-//     /// @param _tokenId The NFT identifier which is being transferred
-//     /// @param data Additional data with no specified format
-//     /// @return The selector to confirm the token transfer
-//     function onERC721Received(
-//         address operator,
-//         address from,
-//         uint _tokenId,
-//         bytes calldata
-//     ) external pure override returns (bytes4) {
-//         return IERC721Receiver.onERC721Received.selector;
-//     }
+    /// @notice Handles the receipt of an ERC721 token (Uniswap V3 position NFT)
+    /// @dev Required for contracts to receive ERC721 tokens
+    /// @param operator The address which called `safeTransferFrom` function
+    /// @param from The address which previously owned the token
+    /// @param _tokenId The NFT identifier which is being transferred
+    /// @param data Additional data with no specified format
+    /// @return The selector to confirm the token transfer
+    function onERC721Received(
+        address operator,
+        address from,
+        uint _tokenId,
+        bytes calldata
+    ) external pure override returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
+    }
 
-//     /// @notice Mints a new Uniswap V3 liquidity position with the provided amounts of DAI and WETH
-//     /// @dev Transfers tokens from the user, approves the position manager, and mints the position NFT
-//     /// @param amount0ToAdd Amount of DAI to add as liquidity
-//     /// @param amount1ToAdd Amount of WETH to add as liquidity
-//     function mint(uint amount0ToAdd, uint amount1ToAdd) external {
-//         dai.transferFrom(msg.sender, address(this), amount0ToAdd);
-//         weth.transferFrom(msg.sender, address(this), amount1ToAdd);
+    /// @notice Mints a new Uniswap V3 liquidity position with the provided amounts of DAI and WETH
+    /// @dev Transfers tokens from the user, approves the position manager, and mints the position NFT
+    /// @param amount0ToAdd Amount of DAI to add as liquidity
+    /// @param amount1ToAdd Amount of WETH to add as liquidity
+    function mint(uint amount0ToAdd, uint amount1ToAdd) external {
+        dai.transferFrom(msg.sender, address(this), amount0ToAdd);
+        weth.transferFrom(msg.sender, address(this), amount1ToAdd);
 
-//         dai.approve(address(manager), amount0ToAdd);
-//         weth.approve(address(manager), amount1ToAdd);
+        dai.approve(address(manager), amount0ToAdd);
+        weth.approve(address(manager), amount1ToAdd);
 
-//         INonfungiblePositionManager.MintParams
-//             memory params = INonfungiblePositionManager.MintParams({
-//                 token0: DAI,
-//                 token1: WETH,
-//                 fee: 3000,
-//                 tickLower: (MIN_TICK / TICK_SPACING) * TICK_SPACING,
-//                 tickUpper: (MAX_TICK / TICK_SPACING) * TICK_SPACING,
-//                 amount0Desired: amount0ToAdd,
-//                 amount1Desired: amount1ToAdd,
-//                 amount0Min: 0,
-//                 amount1Min: 0,
-//                 recipient: address(this),
-//                 deadline: block.timestamp
-//             });
+        INonfungiblePositionManager.MintParams
+            memory params = INonfungiblePositionManager.MintParams({
+                token0: DAI,
+                token1: WETH,
+                fee: 3000,
+                tickLower: (MIN_TICK / TICK_SPACING) * TICK_SPACING,
+                tickUpper: (MAX_TICK / TICK_SPACING) * TICK_SPACING,
+                amount0Desired: amount0ToAdd,
+                amount1Desired: amount1ToAdd,
+                amount0Min: 0,
+                amount1Min: 0,
+                recipient: address(this),
+                deadline: block.timestamp
+            });
 
-//         (uint _tokenId, uint128 liquidity, uint amount0, uint amount1) = manager
-//             .mint(params);
+        (uint _tokenId, uint128 liquidity, uint amount0, uint amount1) = manager
+            .mint(params);
 
-//         console.log("Token id", _tokenId);
+        console.log("Token id", _tokenId);
 
-//         tokenId = _tokenId;
+        tokenId = _tokenId;
 
-//         if (amount0ToAdd > amount0) {
-//             dai.approve(address(manager), 0);
-//             dai.transfer(msg.sender, amount0ToAdd - amount0);
-//         }
-//         if (amount1ToAdd > amount1) {
-//             weth.approve(address(manager), 0);
-//             weth.transfer(msg.sender, amount1ToAdd - amount1);
-//         }
+        if (amount0ToAdd > amount0) {
+            dai.approve(address(manager), 0);
+            dai.transfer(msg.sender, amount0ToAdd - amount0);
+        }
+        if (amount1ToAdd > amount1) {
+            weth.approve(address(manager), 0);
+            weth.transfer(msg.sender, amount1ToAdd - amount1);
+        }
 
-//         console.log("Token id", tokenId);
-//         console.log("Liquidity", liquidity);
+        console.log("Token id", tokenId);
+        console.log("Liquidity", liquidity);
 
-//         emit Mint(_tokenId);
-//     }
+        emit Mint(_tokenId);
+    }
 
-//     /// @notice Increases liquidity for the stored position NFT using additional DAI and WETH
-//     /// @dev Transfers tokens from the user, approves the position manager, and increases liquidity
-//     /// @param amount0ToAdd Additional amount of DAI to add
-//     /// @param amount1ToAdd Additional amount of WETH to add
-//     function increaseLiquidity(uint amount0ToAdd, uint amount1ToAdd) external {
-//         dai.transferFrom(msg.sender, address(this), amount0ToAdd);
-//         weth.transferFrom(msg.sender, address(this), amount1ToAdd);
+    /// @notice Increases liquidity for the stored position NFT using additional DAI and WETH
+    /// @dev Transfers tokens from the user, approves the position manager, and increases liquidity
+    /// @param amount0ToAdd Additional amount of DAI to add
+    /// @param amount1ToAdd Additional amount of WETH to add
+    function increaseLiquidity(uint amount0ToAdd, uint amount1ToAdd) external {
+        dai.transferFrom(msg.sender, address(this), amount0ToAdd);
+        weth.transferFrom(msg.sender, address(this), amount1ToAdd);
 
-//         dai.approve(address(manager), amount0ToAdd);
-//         weth.approve(address(manager), amount1ToAdd);
+        dai.approve(address(manager), amount0ToAdd);
+        weth.approve(address(manager), amount1ToAdd);
 
-//         INonfungiblePositionManager.IncreaseLiquidityParams
-//             memory params = INonfungiblePositionManager
-//                 .IncreaseLiquidityParams({
-//                     tokenId: tokenId,
-//                     amount0Desired: amount0ToAdd,
-//                     amount1Desired: amount1ToAdd,
-//                     amount0Min: 0,
-//                     amount1Min: 0,
-//                     deadline: block.timestamp
-//                 });
+        INonfungiblePositionManager.IncreaseLiquidityParams
+            memory params = INonfungiblePositionManager
+                .IncreaseLiquidityParams({
+                    tokenId: tokenId,
+                    amount0Desired: amount0ToAdd,
+                    amount1Desired: amount1ToAdd,
+                    amount0Min: 0,
+                    amount1Min: 0,
+                    deadline: block.timestamp
+                });
 
-//         (uint liquidity, uint amount0, uint amount1) = manager
-//             .increaseLiquidity(params);
+        (uint liquidity, uint amount0, uint amount1) = manager
+            .increaseLiquidity(params);
 
-//         console.log("Liquidity is:", liquidity);
-//         console.log("amount 0 is:", amount0);
-//         console.log("amount 1 is:", amount1);
+        console.log("Liquidity is:", liquidity);
+        console.log("amount 0 is:", amount0);
+        console.log("amount 1 is:", amount1);
 
-//         if (amount0ToAdd > amount0) {
-//             dai.approve(address(manager), 0);
-//             dai.transfer(msg.sender, amount0ToAdd - amount0);
-//         }
+        if (amount0ToAdd > amount0) {
+            dai.approve(address(manager), 0);
+            dai.transfer(msg.sender, amount0ToAdd - amount0);
+        }
 
-//         if (amount1ToAdd > amount1) {
-//             weth.approve(address(manager), 0);
-//             weth.transfer(msg.sender, amount1ToAdd - amount1);
-//         }
-//     }
+        if (amount1ToAdd > amount1) {
+            weth.approve(address(manager), 0);
+            weth.transfer(msg.sender, amount1ToAdd - amount1);
+        }
+    }
 
-//     /// @notice Decreases liquidity for the stored position NFT
-//     /// @dev Decreases the specified amount of liquidity from the position
-//     /// @param liquidity The amount of liquidity to remove
-//     function decreaseLiquidity(uint128 liquidity) external {
-//         INonfungiblePositionManager.DecreaseLiquidityParams
-//             memory params = INonfungiblePositionManager
-//                 .DecreaseLiquidityParams({
-//                     tokenId: tokenId,
-//                     liquidity: liquidity,
-//                     amount0Min: 0,
-//                     amount1Min: 0,
-//                     deadline: block.timestamp
-//                 });
+    /// @notice Decreases liquidity for the stored position NFT
+    /// @dev Decreases the specified amount of liquidity from the position
+    /// @param liquidity The amount of liquidity to remove
+    function decreaseLiquidity(uint128 liquidity) external {
+        INonfungiblePositionManager.DecreaseLiquidityParams
+            memory params = INonfungiblePositionManager
+                .DecreaseLiquidityParams({
+                    tokenId: tokenId,
+                    liquidity: liquidity,
+                    amount0Min: 0,
+                    amount1Min: 0,
+                    deadline: block.timestamp
+                });
 
-//         (uint amount0, uint amount1) = manager.decreaseLiquidity(params);
+        (uint amount0, uint amount1) = manager.decreaseLiquidity(params);
 
-//         console.log("amount 0:", amount0);
-//         console.log("amount 1:", amount1);
-//     }
+        console.log("amount 0:", amount0);
+        console.log("amount 1:", amount1);
+    }
 
-//     /// @notice Collects all fees and tokens owed to the position NFT and sends them to the caller
-//     /// @dev Collects the maximum possible amounts for both tokens
-//     function collect() external {
-//         INonfungiblePositionManager.CollectParams
-//             memory params = INonfungiblePositionManager.CollectParams({
-//                 tokenId: tokenId,
-//                 recipient: msg.sender,
-//                 amount0Max: type(uint128).max,
-//                 amount1Max: type(uint128).max
-//             });
+    /// @notice Collects all fees and tokens owed to the position NFT and sends them to the caller
+    /// @dev Collects the maximum possible amounts for both tokens
+    function collect() external {
+        INonfungiblePositionManager.CollectParams
+            memory params = INonfungiblePositionManager.CollectParams({
+                tokenId: tokenId,
+                recipient: msg.sender,
+                amount0Max: type(uint128).max,
+                amount1Max: type(uint128).max
+            });
 
-//         (uint amount0, uint amount1) = manager.collect(params);
+        (uint amount0, uint amount1) = manager.collect(params);
 
-//         console.log("fee 0:", amount0);
-//         console.log("fee 1:", amount1);
-//     }
+        console.log("fee 0:", amount0);
+        console.log("fee 1:", amount1);
+    }
 
-//     /// @notice Returns the current liquidity of a given position NFT
-//     /// @param _tokenId The ID of the position NFT
-//     /// @return liquidity The amount of liquidity in the position
-//     function getLiquidity(uint _tokenId) external view returns (uint128) {
-//         (, , , , , , , uint128 liquidity, , , , ) = manager.positions(_tokenId);
-//         return liquidity;
-//     }
-// }
+    /// @notice Returns the current liquidity of a given position NFT
+    /// @param _tokenId The ID of the position NFT
+    /// @return liquidity The amount of liquidity in the position
+    function getLiquidity(uint _tokenId) external view returns (uint128) {
+        (, , , , , , , uint128 liquidity, , , , ) = manager.positions(_tokenId);
+        return liquidity;
+    }
+}
